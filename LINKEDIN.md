@@ -19,6 +19,7 @@ snapshots locais do container MSIX e da autenticacao.
 O projeto e experimental, nao oficial e trata seguranca como prioridade:
 credenciais ficam somente na maquina e nunca devem ser compartilhadas.
 
-Codigo, documentacao e contribuicoes: [adicione aqui o link do GitHub]
+Codigo, documentacao e contribuicoes:
+https://github.com/Willianjesusdasilva/gpt-profile
 
 #opensource #powershell #windows #chatgpt #codex #github
