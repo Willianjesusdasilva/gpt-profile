@@ -1,0 +1,13 @@
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.*
+auth.json
+active.json
+profiles/
+gpt-profile/
+gtp-profile/
+*.tmp
+.idea/
+.vscode/
