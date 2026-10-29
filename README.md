@@ -61,7 +61,9 @@ Consulte [SECURITY.md](SECURITY.md) antes de usar.
 
 ## Instalacao
 
-Clone ou baixe este repositorio e execute:
+Clone ou baixe este repositorio e de dois cliques em `install.bat`. Nao precisa de administrador. Depois abra um novo terminal.
+
+Tambem pode instalar pelo PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
@@ -187,3 +189,77 @@ para o aplicativo desktop e seu container MSIX no Windows.
 ## Licenca
 
 Distribuido sob a licenca MIT. Consulte [LICENSE](LICENSE).
+
+## Levar os repositorios para outra maquina
+
+Com Git instalado, na maquina de origem:
+
+```powershell
+gpt-profile backup repos.json -Root C:\git
+```
+
+Copie `repos.json` para a outra maquina, instale pelo `install.bat` e execute:
+
+```powershell
+gpt-profile restore repos.json -Root D:\git
+```
+
+Sem nome de arquivo, `gpt-profile backup` abre a janela **Salvar como** do
+Windows e `gpt-profile restore` abre a janela **Abrir** para selecionar o backup.
+O formato sugerido e `.gptbackup`, com contas e repositorios protegidos por
+senha. No seletor de tipo de arquivo, escolha **Somente repositorios** para JSON.
+Com `-IncludeProfiles`, o seletor aceita apenas `.gptbackup`.
+Cancelar a janela encerra a operacao sem criar ou importar dados.
+Ao informar o caminho no comando, a janela nao aparece (util para scripts).
+Backups protegidos existentes sao preservados; escolha um nome novo.
+Use `-Force` para substituir um backup existente. Subpastas sao preservadas;
+a busca para ao encontrar um repositorio. Pastas existentes no destino sao
+preservadas e reportadas como falha; os outros repositorios continuam.
+
+O arquivo guarda URLs do origin e branches atuais. Faca commit e push antes
+do backup: arquivos sem commit, commits sem push, repositorios sem origin,
+HEAD destacado, stashes e arquivos ignorados nao sao transferidos. Repositorios
+sem origin ou com HEAD destacado interrompem a exportacao com erro.
+Repositorios privados exigem autenticacao Git na outra maquina. Submodulos
+nao sao inicializados automaticamente. Perfis e credenciais do aplicativo nao
+entram nesse arquivo. URLs HTTP com credenciais ou parametros sao recusadas.
+
+## Transferir tambem as contas conectadas
+
+Na origem, salve todas as contas com `gpt-profile add <nome>` e execute:
+
+```powershell
+gpt-profile backup contas.gptbackup -IncludeProfiles -Root C:\git
+```
+
+O programa fecha o aplicativo, atualiza o perfil ativo e pede uma senha de
+pelo menos 12 caracteres, com confirmacao. O arquivo contem os snapshots,
+as credenciais salvas (incluindo CodexAuth/auth.json) e a lista de repositorios.
+O conteudo e criptografado com AES-256-CBC e autenticado com HMAC-SHA256;
+as chaves sao derivadas com PBKDF2-SHA256 (210.000 iteracoes, salt aleatorio).
+Nao e usada criptografia vinculada ao usuario Windows para o arquivo de backup.
+O conteudo descriptografado e montado em memoria; backups grandes precisam de
+memoria disponivel. Nao ha recuperacao de senha.
+
+Na outra maquina, instale o mesmo aplicativo e o gpt-profile e execute:
+
+```powershell
+gpt-profile restore contas.gptbackup -Root D:\git
+```
+
+Informe a mesma senha. Os perfis sao importados e o perfil que estava ativo
+no backup e ativado e aberto. Para outra conta: `gpt-profile open <nome>`.
+Use `-NoLaunch` para nao abrir o aplicativo automaticamente.
+Perfis de mesmo nome no destino impedem a importacao; nenhum e sobrescrito.
+`-Force` nao substitui perfis nem backups criptografados existentes.
+
+A transferencia restaura as credenciais disponiveis; nao garante login valido.
+Tokens expirados/revogados e credenciais no cofre do sistema ou cookies
+vinculados ao Windows de origem podem exigir autenticacao novamente. Nao
+exporta o cofre do Windows, senhas do navegador ou autenticacao Git/SSH.
+Veja a [documentacao de autenticacao](https://learn.chatgpt.com/docs/auth).
+Nao ha validacao online das sessoes durante o restore.
+
+Trate o arquivo como uma senha: transfira apenas entre maquinas suas e
+confiaveis e nao o publique em Git. Use uma senha exclusiva e forte.
+O backup JSON anterior continua disponivel para transferir somente repositorios.

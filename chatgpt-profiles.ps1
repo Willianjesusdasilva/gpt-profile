@@ -1,11 +1,17 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("status", "list", "add", "switch", "remove", "open", "shared", "help")]
+    [ValidateSet("status", "list", "add", "switch", "remove", "open", "shared", "help", "backup", "restore")]
     [string]$Command = "status",
 
     [Parameter(Position = 1)]
     [string]$Name,
+
+    [string]$Root = "C:\git",
+
+    [switch]$IncludeProfiles,
+
+    [Security.SecureString]$Password,
 
     [switch]$NoLaunch,
     [switch]$Force
@@ -277,11 +283,13 @@ function Switch-Profile($Package, [string]$ProfileName) {
     if ($active -and $active -ne $ProfileName) {
         Save-CurrentProfile $Package
     } elseif (-not $active) {
-        $backupName = "_backup-" + (Get-Date -Format "yyyyMMdd-HHmmss")
+        $backupName = "backup-" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" + ([guid]::NewGuid().ToString("N").Substring(0, 8))
         Write-Info "Criando backup inicial '$backupName'..."
         $backupPath = Get-ProfilePath $backupName
         Copy-AppData $Package.DataRoot $backupPath
-        Save-ExternalAuth $Package $backupPath
+        if (-not (Uses-ExternalAuth $Package) -or (Test-Path -LiteralPath (Get-ExternalAuthFile))) {
+            Save-ExternalAuth $Package $backupPath
+        }
     }
 
     Write-Info "Ativando o perfil '$ProfileName'..."
@@ -416,6 +424,12 @@ Uso:
   gpt-profile shared                  Abre o workspace comum
   gpt-profile open                    Abre o perfil atualmente ativo
   gpt-profile remove <nome> -Force    Remove um perfil
+  gpt-profile backup                 Abre janela para salvar backup
+  gpt-profile restore                Abre janela para selecionar backup
+  gpt-profile backup contas.gptbackup -IncludeProfiles  Inclui contas, com senha
+  gpt-profile restore contas.gptbackup                 Importa contas e repos
+  gpt-profile backup [arquivo.json] -Root C:\git   Exporta lista de repositorios
+  gpt-profile restore <arquivo.json> -Root D:\git  Clona os repositorios
   gpt-profile status                  Mostra o diagnostico
 
 O app e encerrado durante add/switch para evitar corrupcao. Os perfis ficam em:
@@ -427,6 +441,27 @@ try {
     if ($Command -eq "help") {
         Show-Help
         exit 0
+    }
+
+    if ($Command -in @("backup", "restore")) {
+        if ([string]::IsNullOrWhiteSpace($Name)) {
+            . (Join-Path $PSScriptRoot "file-dialog.ps1")
+            $Name = Select-BackupFile -Mode $Command -ProfilesOnly:$IncludeProfiles
+            if ([string]::IsNullOrWhiteSpace($Name)) {
+                Write-Info 'Operacao cancelada. Nenhum backup criado ou restaurado.'
+                exit 0
+            }
+        }
+        if ($IncludeProfiles -or ($Name -and [IO.Path]::GetExtension($Name) -eq ".gptbackup")) {
+            . (Join-Path $PSScriptRoot "transfer.ps1")
+            if ([IO.Path]::GetExtension($Name) -ne ".gptbackup") { throw 'Use a extensao .gptbackup para incluir contas.' }
+            $transferFile = [IO.Path]::GetFullPath($Name)
+            if ($Command -eq 'backup') { Export-Transfer $transferFile $Root $Password }
+            else { Import-Transfer $transferFile $Root $Password }
+            exit 0
+        }
+        & (Join-Path $PSScriptRoot "repositories.ps1") -Command $Command -Path $Name -Root $Root -Force:$Force
+        exit $LASTEXITCODE
     }
 
     $package = Get-ChatGPTPackage

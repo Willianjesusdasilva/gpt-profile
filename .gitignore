@@ -11,3 +11,6 @@ gtp-profile/
 *.tmp
 .idea/
 .vscode/
+
+# Portable account backups contain credentials
+*.gptbackup
